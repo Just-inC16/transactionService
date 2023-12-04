@@ -1,11 +1,15 @@
 package com.tcs.transactionService;
 
+import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 
 @RestController
 @RequestMapping("/transaction")
@@ -26,9 +30,10 @@ public class TransactionController {
 
 	@PostMapping
 	public void createTransaction(@RequestBody CustomerOrder customerOrder) {
+		Transaction newTransaction = new Transaction();
 		try {
 			// Save the transaction into db
-			Transaction newTransaction = new Transaction();
+
 			newTransaction.setSenderId(customerOrder.getSenderId());
 			newTransaction.setReceiverId(customerOrder.getReceiverId());
 			newTransaction.setAmount(customerOrder.getAmount());
@@ -46,7 +51,23 @@ public class TransactionController {
 			System.out.println(event.toString());
 			this.kafkaTemplate.send("new-orders", event);
 		} catch (Exception e) {
-			System.out.println("Exception" + e);
+			// If error, set the status for transaction to failure
+			// Note: You don't need to send event b/c it failed at the beginning and it's
+			// noted(FAILURE)!
+			newTransaction.setStatus(Status.FAILURE);
+			this.transactionRepository.save(newTransaction);
 		}
 	}
+
+	@KafkaListener(topics = "reversed-transaction")
+	public String reverseTransaction(String event) throws JsonMappingException, JsonProcessingException {
+		System.out.println("We need to reverse transaction" + event);
+		return "We need to reverse transaction";
+	}
+
+	@KafkaListener(topics = "success-transaction")
+	public void successTransaction(String event) throws JsonMappingException, JsonProcessingException {
+		System.out.println("successful transaction so edit status to Success");
+	}
+
 }
