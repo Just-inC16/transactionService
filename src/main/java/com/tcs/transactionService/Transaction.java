@@ -24,5 +24,4 @@ public class Transaction {
 	private Long receiverId;
 	private Double amount;
 	private Status status; // Enum: PENDING, SUCCESS, FAILURE
-	// Getters and Setters
 }
